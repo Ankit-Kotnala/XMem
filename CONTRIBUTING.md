@@ -56,7 +56,7 @@ source .venv/bin/activate
 Install the project with development dependencies:
 
 ```bash
-pip install -e
+pip install -e .
 ```
 
 ## Linting and Formatting
