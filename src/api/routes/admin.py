@@ -1253,7 +1253,7 @@ def _scrape_worker(job_id: str, repo_slug: str, target: int, resume_page: int, r
 
         _push_status(queue, "status", f"Fetching stargazers for {repo_slug}...")
 
-        while len(stargazers) < 5000:
+        while len(stargazers) < 2000:
             if stop_event and stop_event.is_set():
                 break
             pat = _get_best_pat(db)
