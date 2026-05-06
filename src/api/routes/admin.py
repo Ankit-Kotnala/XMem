@@ -1849,6 +1849,8 @@ def _bson_safe(obj: Any) -> Any:
     if isinstance(obj, list):
         return [_bson_safe(item) for item in obj]
     if isinstance(obj, datetime):
+        if obj.tzinfo is None:
+            obj = obj.replace(tzinfo=timezone.utc)
         return obj.isoformat()
     if hasattr(obj, "__str__") and not isinstance(obj, (str, int, float, bool)):
         return str(obj)
