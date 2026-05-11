@@ -108,15 +108,32 @@ def _error(request: Request, detail: str, code: int, elapsed_ms: float = 0) -> J
     return JSONResponse(content=body.model_dump(), status_code=code)
 
 
-def _detect_chat_provider(url: str) -> str:
-    lowered = url.lower()
-    if "chatgpt.com" in lowered or "chat.openai.com" in lowered or "openai.com" in lowered:
-        return "chatgpt"
-    if "claude.ai" in lowered:
-        return "claude"
-    if "gemini.google.com" in lowered or "g.co/gemini" in lowered:
-        return "gemini"
+def _detect_chat_provider(*urls: str) -> str:
+    for url in urls:
+        lowered = (url or "").lower()
+        if not lowered:
+            continue
+        if "chatgpt.com" in lowered or "chat.openai.com" in lowered or "openai.com" in lowered:
+            return "chatgpt"
+        if "claude.ai" in lowered or "claude.com" in lowered:
+            return "claude"
+        if "gemini.google.com" in lowered or "g.co/gemini" in lowered:
+            return "gemini"
     return "unknown"
+
+
+def _chat_share_error_message(result: Dict[str, Any]) -> str:
+    provider = result.get("provider") or "unknown"
+    if provider == "unknown":
+        return (
+            "Failed to extract messages from the provided link. "
+            "Please provide a public ChatGPT, Claude, or Gemini share link."
+        )
+
+    return (
+        f"Failed to extract messages from the provided {provider} share link. "
+        "Please confirm the link is public, exists, and is not redirecting to a login or deleted-chat page."
+    )
 
 
 async def _render_chat_share(url: str) -> tuple[str, str]:
@@ -206,7 +223,7 @@ def _render_chat_share_sync(url: str) -> tuple[str, str]:
         except Exception as exc:
             logger.warning("Timeout or error during navigation: %s", exc)
 
-        provider = _detect_chat_provider(page.url or url)
+        provider = _detect_chat_provider(page.url, url)
         selector = {
             "chatgpt": "div[data-message-author-role]",
             "claude": "script",
@@ -230,8 +247,12 @@ def _render_chat_share_sync(url: str) -> tuple[str, str]:
     return html, final_url
 
 
-def _extract_chat_pairs(url: str, html: str) -> tuple[str, str, List[MessagePair]]:
-    provider = _detect_chat_provider(url)
+def _extract_chat_pairs(
+    url: str,
+    html: str,
+    source_url: str = "",
+) -> tuple[str, str, List[MessagePair]]:
+    provider = _detect_chat_provider(url, source_url)
     soup = BeautifulSoup(html, "html.parser")
     pairs: List[MessagePair] = []
     extraction_method = "none"
@@ -512,7 +533,7 @@ def _parse_transcript_text(text: str) -> tuple[str, List[MessagePair]]:
 
 async def _scrape_chat_share(url: str) -> Dict[str, Any]:
     html, final_url = await _render_chat_share(url)
-    provider, extraction_method, pairs = _extract_chat_pairs(final_url or url, html)
+    provider, extraction_method, pairs = _extract_chat_pairs(final_url or url, html, url)
 
     return {
         "provider": provider,
@@ -757,7 +778,8 @@ async def scrape_chat_link(req: ScrapeRequest, request: Request):
         pairs = result["pairs"]
 
         if not pairs:
-            return _error(request, "Failed to extract messages from the provided link.", 400)
+            elapsed = round((time.perf_counter() - start) * 1000, 2)
+            return _error(request, _chat_share_error_message(result), 400, elapsed)
 
         data = ScrapeResponse(pairs=pairs)
         elapsed = round((time.perf_counter() - start) * 1000, 2)
