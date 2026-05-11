@@ -5,7 +5,9 @@ import logging
 import secrets
 import string
 import time
+from collections import OrderedDict
 from datetime import datetime
+from threading import RLock
 from typing import List, Optional, Dict, Any
 
 from src.config import settings
@@ -21,6 +23,8 @@ _in_memory_api_keys: Dict[str, Dict[str, Any]] = {}
 
 VALIDATION_CACHE_TTL_SECONDS = 120
 VALIDATION_CACHE_MAX_SIZE = 2048
+_validation_cache: OrderedDict[str, tuple[float, Dict[str, Any]]] = OrderedDict()
+_validation_cache_lock = RLock()
 
 
 class APIKeyStore:
@@ -38,7 +42,6 @@ class APIKeyStore:
         self.api_keys = None
         self._connected = False
         self._in_memory = False
-        self._validation_cache: Dict[str, tuple[float, Dict[str, Any]]] = {}
 
         # Try to connect
         self._try_connect()
@@ -86,33 +89,38 @@ class APIKeyStore:
 
     def _clear_validation_cache(self) -> None:
         """Clear cached API key validation results."""
-        self._validation_cache.clear()
+        with _validation_cache_lock:
+            _validation_cache.clear()
 
     def _get_cached_validation(self, key_hash: str) -> Optional[Dict[str, Any]]:
         """Return a cached validation result when it is still fresh."""
-        cached = self._validation_cache.get(key_hash)
-        if not cached:
-            return None
+        with _validation_cache_lock:
+            cached = _validation_cache.get(key_hash)
+            if not cached:
+                return None
 
-        expires_at, key_doc = cached
-        if expires_at <= time.monotonic():
-            self._validation_cache.pop(key_hash, None)
-            return None
+            expires_at, key_doc = cached
+            if expires_at <= time.monotonic():
+                _validation_cache.pop(key_hash, None)
+                return None
 
-        result = dict(key_doc)
+            result = dict(key_doc)
+
         result["last_used"] = datetime.utcnow()
         return result
 
     def _cache_validation(self, key_hash: str, key_doc: Dict[str, Any]) -> None:
         """Cache a sanitized active API key document."""
-        if len(self._validation_cache) >= VALIDATION_CACHE_MAX_SIZE:
-            oldest_key = next(iter(self._validation_cache))
-            self._validation_cache.pop(oldest_key, None)
+        with _validation_cache_lock:
+            if key_hash in _validation_cache:
+                _validation_cache.pop(key_hash, None)
+            while len(_validation_cache) >= VALIDATION_CACHE_MAX_SIZE:
+                _validation_cache.popitem(last=False)
 
-        self._validation_cache[key_hash] = (
-            time.monotonic() + VALIDATION_CACHE_TTL_SECONDS,
-            dict(key_doc),
-        )
+            _validation_cache[key_hash] = (
+                time.monotonic() + VALIDATION_CACHE_TTL_SECONDS,
+                dict(key_doc),
+            )
 
     def create_api_key(
         self,
@@ -157,7 +165,6 @@ class APIKeyStore:
                 "is_active": True,
             }
             result = self.api_keys.insert_one(key_doc)
-            self._clear_validation_cache()
             logger.info(f"Created new API key for user {user_id}")
             return {
                 "key": key,
