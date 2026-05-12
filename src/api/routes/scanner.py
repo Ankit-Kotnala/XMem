@@ -53,6 +53,7 @@ logger = logging.getLogger("xmem.api.routes.scanner")
 router = APIRouter(prefix="/v1/scanner", tags=["scanner"])
 
 _code_store_singleton: Any = None
+SCANNER_DURABLE_TIMEOUT_SECONDS = 1800.0
 
 
 def _get_code_store():
@@ -70,6 +71,10 @@ def _get_code_store():
 def _schedule_durable_job(job: Dict[str, Any], handler) -> None:
     if job.get("status") in {QUEUED, FAILED}:
         asyncio.create_task(run_job(get_default_job_store(), job["job_id"], handler))
+
+
+def _durable_timeout_seconds(job: Dict[str, Any]) -> float:
+    return float(job.get("timeout_seconds") or SCANNER_DURABLE_TIMEOUT_SECONDS)
 
 
 async def _public_durable_job(job_id: str) -> Optional[Dict[str, Any]]:
@@ -809,7 +814,7 @@ async def resume_scan(req: ResumeScanRequest, user: dict = Depends(require_api_k
                 "scanner_job_id": job_id,
             },
             user_id=username,
-            timeout_seconds=1800.0,
+            timeout_seconds=SCANNER_DURABLE_TIMEOUT_SECONDS,
             max_attempts=2,
         )
         store.upsert_scanner_job(
@@ -817,7 +822,7 @@ async def resume_scan(req: ResumeScanRequest, user: dict = Depends(require_api_k
             branch=branch, url=url, phase1_status="running", phase2_status="pending",
             started_at=started_at, error=None, durable_job_id=durable_job["job_id"],
             retry_count=int(durable_job.get("retry_count") or 0),
-            timeout_seconds=float(durable_job.get("timeout_seconds") or 1800.0),
+            timeout_seconds=_durable_timeout_seconds(durable_job),
         )
         _schedule_durable_job(
             durable_job,
@@ -851,7 +856,7 @@ async def resume_scan(req: ResumeScanRequest, user: dict = Depends(require_api_k
             "scanner_job_id": job_id,
         },
         user_id=username,
-        timeout_seconds=1800.0,
+        timeout_seconds=SCANNER_DURABLE_TIMEOUT_SECONDS,
         max_attempts=2,
     )
     store.upsert_scanner_job(
@@ -859,7 +864,7 @@ async def resume_scan(req: ResumeScanRequest, user: dict = Depends(require_api_k
         branch=branch, url=url, phase1_status="complete", phase2_status="running",
         started_at=started_at, error=None, durable_job_id=durable_job["job_id"],
         retry_count=int(durable_job.get("retry_count") or 0),
-        timeout_seconds=float(durable_job.get("timeout_seconds") or 1800.0),
+        timeout_seconds=_durable_timeout_seconds(durable_job),
     )
     _schedule_durable_job(
         durable_job,
@@ -977,7 +982,7 @@ async def start_scan(req: ScanRequest, user: dict = Depends(require_api_key)):
             "force_full": req.force_full,
         },
         user_id=username,
-        timeout_seconds=1800.0,
+        timeout_seconds=SCANNER_DURABLE_TIMEOUT_SECONDS,
         max_attempts=2,
     )
     store.upsert_scanner_job(
@@ -993,7 +998,7 @@ async def start_scan(req: ScanRequest, user: dict = Depends(require_api_key)):
         error=None,
         durable_job_id=durable_job["job_id"],
         retry_count=int(durable_job.get("retry_count") or 0),
-        timeout_seconds=float(durable_job.get("timeout_seconds") or 1800.0),
+        timeout_seconds=_durable_timeout_seconds(durable_job),
     )
     store.upsert_user_repo_entry(username, org, repo, branch)
 
