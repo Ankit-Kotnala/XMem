@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import pytest
 
@@ -56,7 +56,7 @@ def test_api_key_store_enforces_scopes_expiry_and_bindings_in_memory(monkeypatch
         "user-1",
         name="Project key",
         scopes=["memory:read", "scanner:write"],
-        expires_at=datetime.utcnow() + timedelta(minutes=5),
+        expires_at=datetime.now(timezone.utc) + timedelta(minutes=5),
         org_id="org-1",
         project_id="project-1",
     )
@@ -71,13 +71,15 @@ def test_api_key_store_enforces_scopes_expiry_and_bindings_in_memory(monkeypatch
     assert validated["org_id"] == "org-1"
     assert validated["project_id"] == "project-1"
 
+    assert store.validate_api_key(created["key"], required_scope="memory:read") is None
+    assert store.validate_api_key(created["key"], required_scope="memory:read", org_id="org-1") is None
     assert store.validate_api_key(created["key"], required_scope="admin:write") is None
     assert store.validate_api_key(created["key"], org_id="other-org") is None
     assert store.validate_api_key(created["key"], project_id="other-project") is None
 
     expired = store.create_api_key(
         "user-1",
-        expires_at=datetime.utcnow() - timedelta(seconds=1),
+        expires_at=datetime.now(timezone.utc) - timedelta(seconds=1),
     )
     assert store.validate_api_key(expired["key"]) is None
     assert _in_memory_api_keys[expired["key_id"]]["is_active"] is False

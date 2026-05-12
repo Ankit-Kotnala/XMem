@@ -4,7 +4,7 @@ import hashlib
 import logging
 import secrets
 import string
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional, Dict, Any
 
 from src.config import settings
@@ -81,8 +81,6 @@ class APIKeyStore:
             self.api_keys.create_index([("user_id", ASCENDING)])
             self.api_keys.create_index([("key_hash", ASCENDING)], unique=True)
             self.api_keys.create_index([("is_active", ASCENDING)])
-            self.api_keys.create_index([("expires_at", ASCENDING)])
-            self.api_keys.create_index([("org_id", ASCENDING), ("project_id", ASCENDING)])
         except Exception as e:
             logger.warning(f"Failed to create indexes: {e}")
 
@@ -101,9 +99,17 @@ class APIKeyStore:
         normalized = sorted({scope.strip() for scope in (scopes or ["*"]) if scope and scope.strip()})
         return normalized or ["*"]
 
+    def _utc_now(self) -> datetime:
+        return datetime.now(timezone.utc)
+
+    def _as_utc(self, value: datetime) -> datetime:
+        if value.tzinfo is None or value.tzinfo.utcoffset(value) is None:
+            return value.replace(tzinfo=timezone.utc)
+        return value.astimezone(timezone.utc)
+
     def _is_expired(self, key_doc: Dict[str, Any]) -> bool:
         expires_at = key_doc.get("expires_at")
-        return bool(expires_at and datetime.utcnow() > expires_at)
+        return bool(expires_at and self._utc_now() > self._as_utc(expires_at))
 
     def _scope_allowed(self, key_doc: Dict[str, Any], required_scope: Optional[str]) -> bool:
         if not required_scope:
@@ -119,9 +125,9 @@ class APIKeyStore:
     ) -> bool:
         bound_org = key_doc.get("org_id")
         bound_project = key_doc.get("project_id")
-        if org_id is not None and bound_org not in (None, org_id):
+        if bound_org is not None and bound_org != org_id:
             return False
-        if project_id is not None and bound_project not in (None, project_id):
+        if bound_project is not None and bound_project != project_id:
             return False
         return True
 
@@ -150,7 +156,7 @@ class APIKeyStore:
         key = self._generate_api_key()
         key_hash = self._hash_key(key)
         key_prefix = key[:8]
-        now = datetime.utcnow()
+        now = self._utc_now()
         normalized_scopes = self._normalize_scopes(scopes)
 
         if self._in_memory:
@@ -267,7 +273,7 @@ class APIKeyStore:
                         return None
                     if not self._binding_allowed(key_doc, org_id, project_id):
                         return None
-                    key_doc["last_used"] = datetime.utcnow()
+                    key_doc["last_used"] = self._utc_now()
                     result = {**key_doc, "id": str(key_doc["_id"])}
                     result.pop("key_hash", None)
                     return result
@@ -286,7 +292,7 @@ class APIKeyStore:
                     return None
                 if not self._binding_allowed(key_doc, org_id, project_id):
                     return None
-                now = datetime.utcnow()
+                now = self._utc_now()
                 self.api_keys.update_one(
                     {"_id": key_doc["_id"]},
                     {"$set": {"last_used": now}}
