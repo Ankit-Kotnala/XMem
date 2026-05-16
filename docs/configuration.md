@@ -50,3 +50,68 @@ Install local vector backends with:
 ```bash
 pip install -e ".[local]"
 ```
+
+## Embedding Provider
+
+Embedding generation is configured independently from vector storage. The
+default preserves the current cloud behavior:
+
+```env
+EMBEDDING_PROVIDER=auto
+EMBEDDING_MODEL=gemini-embedding-001
+```
+
+`auto` uses Bedrock when `EMBEDDING_MODEL` starts with `amazon.`, otherwise it
+uses Gemini.
+
+For Ollama local embeddings:
+
+```env
+EMBEDDING_PROVIDER=ollama
+OLLAMA_BASE_URL=http://localhost:11434
+OLLAMA_EMBEDDING_MODEL=nomic-embed-text
+PINECONE_DIMENSION=768
+```
+
+For an in-process local embedding model through FastEmbed:
+
+```env
+EMBEDDING_PROVIDER=fastembed
+FASTEMBED_MODEL=BAAI/bge-small-en-v1.5
+PINECONE_DIMENSION=384
+```
+
+The vector dimension must match the selected embedding model before creating
+pgvector, Chroma, SQLite, Pinecone, or Neo4j vector indexes.
+
+## Local Chat Models
+
+Cloud chat models remain the default through `FALLBACK_ORDER`. To use Ollama
+for the normal LLM agents instead of Gemini/OpenAI/OpenRouter/etc.:
+
+```env
+FALLBACK_ORDER=["ollama"]
+OLLAMA_BASE_URL=http://localhost:11434
+OLLAMA_MODEL=llama3.1:8b
+OLLAMA_VISION_MODEL=llava:latest
+```
+
+Pull the model before starting XMem:
+
+```bash
+ollama pull llama3.1:8b
+```
+
+You can also mix local and cloud fallback:
+
+```env
+FALLBACK_ORDER=["ollama", "openrouter", "gemini"]
+```
+
+Agent-specific model overrides still work. For example:
+
+```env
+CLASSIFIER_MODEL=llama3.1:8b
+RETRIEVAL_MODEL=llama3.1:8b
+CODE_MODEL=qwen2.5-coder:7b
+```
