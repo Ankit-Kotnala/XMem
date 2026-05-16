@@ -104,9 +104,9 @@ class Settings(BaseSettings):
     retrieval_model: Optional[str] = Field(default=None, description="Model for retrieval agent")
     code_model: Optional[str] = Field(default=None, description="Model for code annotation agent")
 
-    pinecone_api_key: str = Field(
-        ...,
-        description="Pinecone API key (required)"
+    pinecone_api_key: Optional[str] = Field(
+        default=None,
+        description="Pinecone API key (required when VECTOR_STORE_PROVIDER=pinecone)"
     )
     pinecone_index_name: str = Field(
         default="xmem-index",
@@ -131,6 +131,27 @@ class Settings(BaseSettings):
     pinecone_region: str = Field(
         default="us-east-1",
         description="Pinecone region for embeddings"
+    )
+
+    vector_store_provider: str = Field(
+        default="pinecone",
+        description="Vector store backend: pinecone, pgvector, chroma, or sqlite",
+    )
+    pgvector_url: str = Field(
+        default="postgresql://xmem:xmem@localhost:5432/xmem",
+        description="Postgres/pgvector connection URL",
+    )
+    pgvector_table: str = Field(
+        default="xmem_vectors",
+        description="Postgres table used by the pgvector backend",
+    )
+    chroma_persist_dir: str = Field(
+        default=".xmem/chroma",
+        description="Local Chroma persistence directory",
+    )
+    sqlite_vector_path: str = Field(
+        default=".xmem/xmem_vectors.db",
+        description="Local SQLite vector store path",
     )
 
     ssl_ca_bundle: Optional[str] = Field(

@@ -87,7 +87,7 @@ from src.schemas.profile import ProfileResult
 from src.schemas.summary import SummaryResult
 from src.schemas.weaver import WeaverResult
 from src.storage.base import BaseVectorStore, SearchResult
-from src.storage.pinecone import PineconeVectorStore
+from src.storage.factory import get_vector_store
 from src.config.effort import EffortLevel, EffortConfig, get_effort_config, chunk_text, estimate_tokens
 
 logger = logging.getLogger("xmem.pipelines.ingest")
@@ -284,25 +284,13 @@ class IngestPipeline:
         if vector_store:
             self.vector_store = vector_store
         else:
-            self.vector_store = PineconeVectorStore(
-                api_key=settings.pinecone_api_key,
-                index_name=settings.pinecone_index_name,
-                dimension=settings.pinecone_dimension,
-                metric=settings.pinecone_metric,
-                cloud=settings.pinecone_cloud,
-                region=settings.pinecone_region,
+            self.vector_store = get_vector_store(
                 namespace=settings.pinecone_namespace,
             )
-        logger.info("Pinecone vector store initialised.")
+        logger.info("Vector store initialised (provider=%s).", settings.vector_store_provider)
 
         # ── Code annotations Pinecone store (annotations namespace) ──
-        self.code_vector_store = PineconeVectorStore(
-            api_key=settings.pinecone_api_key,
-            index_name=settings.pinecone_index_name,
-            dimension=settings.pinecone_dimension,
-            metric=settings.pinecone_metric,
-            cloud=settings.pinecone_cloud,
-            region=settings.pinecone_region,
+        self.code_vector_store = get_vector_store(
             namespace=annotations_namespace(org_id),
             create_if_not_exists=False,
         )
@@ -370,7 +358,7 @@ class IngestPipeline:
         )
 
         # Snippet stores are user-scoped — lazily created per user_id
-        self._snippet_stores: Dict[str, PineconeVectorStore] = {}
+        self._snippet_stores: Dict[str, BaseVectorStore] = {}
 
         # ── Weaver ────────────────────────────────────────────────────
         self.weaver = Weaver(
@@ -502,17 +490,11 @@ class IngestPipeline:
     # User-scoped snippet store
     # ------------------------------------------------------------------
 
-    def _get_snippet_store(self, user_id: str) -> PineconeVectorStore:
-        """Get or create a PineconeVectorStore for a user's snippets namespace."""
+    def _get_snippet_store(self, user_id: str) -> BaseVectorStore:
+        """Get or create a vector store for a user's snippets namespace."""
         if user_id not in self._snippet_stores:
             ns = snippets_namespace(user_id)
-            self._snippet_stores[user_id] = PineconeVectorStore(
-                api_key=settings.pinecone_api_key,
-                index_name=settings.pinecone_index_name,
-                dimension=settings.pinecone_dimension,
-                metric=settings.pinecone_metric,
-                cloud=settings.pinecone_cloud,
-                region=settings.pinecone_region,
+            self._snippet_stores[user_id] = get_vector_store(
                 namespace=ns,
                 create_if_not_exists=False,
             )
