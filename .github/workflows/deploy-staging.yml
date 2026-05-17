@@ -187,7 +187,7 @@ jobs:
 
       - name: API contract — auth endpoints exist
         run: |
-          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "${{ vars.STAGING_URL }}/v1/auth/google")
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "${{ vars.STAGING_URL }}/auth/google")
           echo "Auth endpoint returned: $HTTP_CODE"
           # 307 (redirect) or 405 (method not allowed) are both valid — means route exists
           if [ "$HTTP_CODE" = "404" ]; then
