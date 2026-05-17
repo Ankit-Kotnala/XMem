@@ -257,65 +257,6 @@ Load `dist/` in Chrome via `chrome://extensions` → "Load unpacked". Point it t
 
 https://github.com/user-attachments/assets/97793cf9-d247-4d02-9c31-3cc9bbbf89aa
 
-### 3. Use the SDKs
-
-<a id="sdks"></a>
-
-Every SDK exposes the same three core operations: **`ingest`**, **`retrieve`**, and **`search`**.
-
-#### Python SDK (`client/xmem`)
-```python
-from xmem import XMemClient
-
-client = XMemClient(api_url="http://localhost:8000")
-
-# Ingest a conversation turn
-client.ingest(
-    user_query="I switched from Python to Go for all new backend services.",
-    agent_response="That's a solid choice for performance-critical services.",
-    user_id="dev_42"
-)
-
-# Retrieve with LLM-generated answer
-result = client.retrieve(
-    query="What language do I prefer for backends?",
-    user_id="dev_42"
-)
-print(result.answer)  # "You prefer Go for backend services..."
-
-# Raw search (no LLM generation)
-hits = client.search(
-    query="backend architecture decisions",
-    domains=["profile", "summary"],
-    user_id="dev_42"
-)
-```
-
-#### TypeScript SDK (`@xmem/sdk`)
-```typescript
-import { XMemClient } from "@xmem/sdk";
-
-const client = new XMemClient("http://localhost:8000");
-
-const hits = await client.search({
-  query: "python backend architecture",
-  domains: ["code", "summary"],
-  user_id: "dev_42"
-});
-```
-
-#### Go SDK (`github.com/xmem/sdk-go`)
-```go
-client := xmem.NewClient("http://localhost:8000", "")
-
-answer, _ := client.Retrieve(xmem.RetrieveParams{
-    Query:  "Did I ever mention my dog?",
-    UserID: "dev_42",
-})
-```
-
----
-
 ## Architecture
 
 ![Architecture](architecture.png)
@@ -377,10 +318,6 @@ User Query
 └──────────────────────────────────┘
 ```
 
-### Resilience
-
-Every LLM call in the pipeline passes through the **Model Registry**. If a provider fails or rate-limits, the request is automatically rerouted to the next provider in the fallback chain. No data loss. No downtime.
-
 ---
 
 ## Configuration
@@ -399,72 +336,3 @@ XMem is highly configurable. Override any agent's model, tune the fallback chain
 | `RATE_LIMIT` | `60` | API requests per minute |
 | `TEMPERATURE` | `0.4` | LLM generation temperature |
 
-See [docs/configuration.md](docs/configuration.md) for the full reference.
-
----
-
-## Docker
-
-```bash
-docker build -t xmem .
-docker run -p 8000:8000 --env-file .env xmem
-```
-
-Or with Docker Compose for the full stack (XMem + Neo4j + MongoDB):
-```bash
-cd docker && docker-compose up
-```
-
----
-
-## Project Structure
-
-```
-xmem/
-├── src/
-│   ├── agents/        # Classifier, Profiler, Temporal, Summarizer,
-│   │                  # Judge, Weaver, Code, Snippet, Image agents
-│   ├── pipelines/     # LangGraph ingestion & retrieval workflows
-│   ├── api/           # FastAPI routes, middleware, rate limiting
-│   ├── storage/       # Pinecone vector store client
-│   ├── graph/         # Neo4j graph client + schema definitions
-│   ├── scanner/       # Git ops, AST parser, incremental indexer
-│   ├── models/        # Multi-LLM registry + provider builders
-│   ├── schemas/       # Pydantic models for all memory domains
-│   ├── config/        # Settings, effort levels, constants
-│   └── prompts/       # System prompts for each agent
-├── tests/             # Unit, integration, and E2E tests
-├── benchmarks/        # LongMemEval + LoCoMo evaluation suite
-├── frontend/          # Ingestion/retrieval visualization UI
-├── docker/            # Docker Compose for full stack
-└── pyproject.toml
-```
-
----
-
-## Contributing
-
-https://github.com/user-attachments/assets/07b93914-4fd2-47ca-b048-c3cd390455e3
-
-We welcome contributions:
-
-```bash
-# Setup dev environment
-pip install -e ".[dev]"
-
-# Run tests
-GEMINI_API_KEY=dummy pytest
-
-# Lint
-ruff check src/
-```
-
-PRs for new IDE extensions (VSCode, JetBrains), additional language support in the AST parser, and new storage backends are especially welcome.
-
----
-
-<div align="center">
-  <strong>Forget forgetting. Build with XMem.</strong>
-  <br/><br/>
-  <a href="#quickstart">Get Started</a> · <a href="https://github.com/XortexLabs/xmem/issues">Report Bug</a> · <a href="https://github.com/XortexLabs/xmem/issues">Request Feature</a>
-</div>
