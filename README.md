@@ -299,11 +299,11 @@ The industry standard benchmark for long-term conversational memory. Tests wheth
     <th>Mastra (GPT-4o)</th>
     <th>Supermemory (GPT-4o)</th>
   </tr>
+  <tr><td><strong>Multi-Session</strong></td><td><strong>93.6</strong></td><td>91.7</td><td>79.7</td><td>71.43</td></tr>
+  <tr><td><strong>Temporal Reasoning</strong></td><td><strong>94.5</strong></td><td>91.7</td><td>85.7</td><td>76.69</td></tr>
   <tr><td><strong>Single-Session Assistant</strong></td><td><strong>96.43</strong></td><td>98.2</td><td>82.1</td><td>96.43</td></tr>
   <tr><td><strong>Single-Session User</strong></td><td><strong>97.1</strong></td><td>97.1</td><td>98.6</td><td>97.14</td></tr>
   <tr><td><strong>Knowledge Update</strong></td><td><strong>91.2</strong></td><td>93.6</td><td>85.9</td><td>88.46</td></tr>
-  <tr><td><strong>Multi-Session</strong></td><td><strong>93.6</strong></td><td>91.7</td><td>79.7</td><td>71.43</td></tr>
-  <tr><td><strong>Temporal Reasoning</strong></td><td><strong>94.5</strong></td><td>91.7</td><td>85.7</td><td>76.69</td></tr>
   <tr><td><strong>Single-Session Preference</strong></td><td><strong>87.0</strong></td><td>90.0</td><td>73.3</td><td>70.0</td></tr>
 </table>
 
