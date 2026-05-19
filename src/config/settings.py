@@ -197,7 +197,7 @@ class Settings(BaseSettings):
     )
     embedding_provider: str = Field(
         default="auto",
-        description="Embedding provider: auto, gemini, bedrock, ollama, or fastembed",
+        description="Embedding provider: auto, gemini, openai, bedrock, ollama, or fastembed",
     )
     ollama_embedding_model: Optional[str] = Field(
         default=None,
