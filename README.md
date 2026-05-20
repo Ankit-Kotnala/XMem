@@ -32,6 +32,12 @@
   <a href="#configuration">Configuration</a>
 </p>
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=XortexAI/XMem&type=date&theme=dark&legend=top-left" />
+  <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=XortexAI/XMem&type=date&legend=top-left" />
+  <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=XortexAI/XMem&type=date&legend=top-left" />
+</picture>
+
 ## What is XMem?
 
 Every conversation with an LLM starts from scratch. Switch tools, switch providers, come back next week and all context is gone.
