@@ -42,22 +42,10 @@
 
 Every conversation with an LLM starts from scratch. Switch tools, switch providers, come back next week and all context is gone.
 
-XMem is a unified memory system that sits behind every AI interface you use. It silently captures your interactions, classifies and stores the important parts, and surfaces the right memories at the right time across any platform.
+XMem is India's #1 Open Source Agentic Memory Layer, we’re introducing Memory-as-a-Service i.e memory layer for every AI use case, domain, whether it’s temporal memory for long-running agents, medical memory for patient context, enterprise memory for teams and projects, or developer memory for coding agents and workflows.
 
-<table>
-  <tr>
-    <td><strong>Multi-domain memory</strong></td>
-    <td>Not a flat key/value store. XMem has specialized agents that understand the <em>type</em> of information (personal facts, events, code, summaries, images) and routes each to purpose-built storage.</td>
-  </tr>
-  <tr>
-    <td><strong>Judge-before-write</strong></td>
-    <td>Every piece of memory passes through a Judge agent that checks it against existing data and decides: add, update, delete, or skip. No duplicates. No stale data.</td>
-  </tr>
-  <tr>
-    <td><strong>Works everywhere</strong></td>
-    <td>Chrome extension for ChatGPT/Claude/Gemini/DeepSeek/Perplexity. Python/TypeScript/Go SDKs for your own agents. One memory layer, every interface.</td>
-  </tr>
-</table>
+This is a first-of-its-kind agentic memory layer for stateful AI.
+Unlike traditional memory systems that simply store and retrieve chunks, XMem turns memory into an active reasoning process. It decides what to remember, what to update, what to forget, and dynamically routes each memory to the right specialized agent & store.
 
 ## Demo
 
@@ -71,9 +59,9 @@ https://github.com/user-attachments/assets/8e3349ab-63c9-4046-821d-ca8097948440
 
 The XMem Chrome extension brings persistent memory to ChatGPT, Claude, Gemini, DeepSeek, and Perplexity.
 
-**Live Search & Inject** &mdash; As you type a prompt, XMem searches your memory in real time and shows a floating chip. One click injects relevant context directly into your input, zero friction.
+**Live Search & Inject** - As you type a prompt, XMem searches your memory in real time and shows a floating chip. One click injects relevant context directly into your input, zero friction.
 
-**Background Auto-Save (Xingest)** &mdash; When you hit "Send", XMem asynchronously captures the conversation turn. A background queue extracts facts and summaries without touching your UI.
+**Background Auto-Save (Xingest)** - When you hit "Send", XMem asynchronously captures the conversation turn. A background queue extracts facts and summaries without touching your UI.
 
 https://github.com/user-attachments/assets/97793cf9-d247-4d02-9c31-3cc9bbbf89aa
 
@@ -148,8 +136,8 @@ Not all memory is the same, and treating it that way is why other solutions unde
 
 When you query XMem, retrieval is not a simple vector search. The LLM itself decides *what* to look up:
 
-1. **Tool Selection** &mdash; The retrieval LLM analyzes your query and calls the appropriate search tools (SearchProfile, SearchTemporal, SearchSummary, SearchSnippet), potentially multiple in parallel.
-2. **Synthesis** &mdash; Results from all search tools are aggregated and the LLM generates a cited answer with source references.
+1. **Tool Selection** - The retrieval LLM analyzes your query and calls the appropriate search tools (SearchProfile, SearchTemporal, SearchSummary, SearchSnippet), potentially multiple in parallel.
+2. **Synthesis** - Results from all search tools are aggregated and the LLM generates a cited answer with source references.
 
 This means asking *"What's my preferred tech stack and when did I last refactor the auth module?"* triggers both a profile lookup and a temporal search automatically.
 
