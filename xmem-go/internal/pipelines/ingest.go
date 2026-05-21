@@ -99,7 +99,7 @@ func (p *IngestPipeline) invoke(ctx context.Context, req contracts.IngestRequest
 	if !isTrivial {
 		run(func() IngestState {
 			items := p.Summarizer.Run(ctx, req.UserQuery, req.AgentResponse)
-			judge := p.Judge.JudgeItems(ctx, weaver.DomainSummary, items, 0.8)
+			judge := p.Judge.JudgeItems(ctx, weaver.DomainSummary, items, userID, 0.8)
 			return IngestState{SummaryJudge: judge, SummaryWeaver: p.Weaver.Execute(ctx, judge, weaver.DomainSummary, userID)}
 		})
 	}
@@ -120,14 +120,14 @@ func (p *IngestPipeline) invoke(ctx context.Context, req contracts.IngestRequest
 	if hasImage {
 		run(func() IngestState {
 			items := p.Image.Run(ctx, req.ImageURL)
-			judge := p.Judge.JudgeItems(ctx, weaver.DomainSummary, items, 0.8)
+			judge := p.Judge.JudgeItems(ctx, weaver.DomainSummary, items, userID, 0.8)
 			return IngestState{ImageJudge: judge, ImageWeaver: p.Weaver.Execute(ctx, judge, weaver.DomainSummary, userID)}
 		})
 	}
 	if hasCode {
 		run(func() IngestState {
 			items := p.Snippet.Run(ctx, req.UserQuery)
-			judge := p.Judge.JudgeItems(ctx, weaver.DomainSnippet, items, 0.8)
+			judge := p.Judge.JudgeItems(ctx, weaver.DomainSnippet, items, userID, 0.8)
 			return IngestState{SnippetJudge: judge, SnippetWeaver: p.Weaver.Execute(ctx, judge, weaver.DomainSnippet, userID)}
 		})
 	}

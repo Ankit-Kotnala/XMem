@@ -9,9 +9,12 @@ import (
 
 	"github.com/xortexai/xmem-go/internal/models"
 	"github.com/xortexai/xmem-go/internal/prompts"
+	"github.com/xortexai/xmem-go/internal/storage"
 	"github.com/xortexai/xmem-go/internal/utils"
 	"github.com/xortexai/xmem-go/internal/weaver"
 )
+
+const summaryJudgeSimilarityThreshold = 0.4
 
 // ---------- shared LLM call helper ----------
 
@@ -302,16 +305,38 @@ func parseSnippetResponse(raw string) []snippetJSON {
 // ---------- Judge ----------
 
 type JudgeAgent struct {
-	Model models.ChatModel
+	Model       models.ChatModel
+	VectorStore storage.VectorStore
+	TopK        int
 }
 
-func (a JudgeAgent) JudgeItems(ctx context.Context, domain weaver.JudgeDomain, items []string, confidence float64) weaver.JudgeResult {
+func (a JudgeAgent) judgeTopK() int {
+	if a.TopK <= 0 {
+		return 3
+	}
+	return a.TopK
+}
+
+func (a JudgeAgent) JudgeItems(ctx context.Context, domain weaver.JudgeDomain, items []string, userID string, confidence float64) weaver.JudgeResult {
 	if len(items) == 0 {
 		return weaver.JudgeResult{}
 	}
 
+	if domain == weaver.DomainSummary {
+		matches := a.fetchSimilarSummaries(ctx, items, userID)
+		if !hasSummaryJudgeCandidates(matches) {
+			return judgeDeterministicSummary(items, confidence)
+		}
+		similarBlock := formatSummarySimilarBlock(items, filterMatchesByThreshold(matches, summaryJudgeSimilarityThreshold))
+		return a.judgeItemsWithLLM(ctx, domain, items, similarBlock, confidence)
+	}
+
+	return a.judgeItemsWithLLM(ctx, domain, items, nil, confidence)
+}
+
+func (a JudgeAgent) judgeItemsWithLLM(ctx context.Context, domain weaver.JudgeDomain, items []string, similarLines []string, confidence float64) weaver.JudgeResult {
 	systemPrompt := prompts.BuildJudgeSystemPrompt()
-	userMessage := prompts.PackJudgeQuery(items, nil, string(domain))
+	userMessage := prompts.PackJudgeQuery(items, similarLines, string(domain))
 
 	raw, err := callModel(ctx, a.Model, systemPrompt, userMessage)
 	if err != nil {
@@ -361,6 +386,97 @@ func judgeDeterministic(items []string, confidence float64) weaver.JudgeResult {
 		})
 	}
 	return weaver.JudgeResult{Operations: ops, Confidence: confidence}
+}
+
+func judgeDeterministicSummary(items []string, confidence float64) weaver.JudgeResult {
+	ops := make([]weaver.Operation, 0, len(items))
+	for _, item := range items {
+		item = strings.TrimSpace(item)
+		if item == "" {
+			continue
+		}
+		ops = append(ops, weaver.Operation{
+			Type:    weaver.OperationAdd,
+			Content: item,
+			Reason:  "No similar summary at or above 0.4 — defaulting to ADD.",
+		})
+	}
+	if confidence == 0 {
+		confidence = 0.8
+	}
+	return weaver.JudgeResult{Operations: ops, Confidence: confidence}
+}
+
+func (a JudgeAgent) fetchSimilarSummaries(ctx context.Context, items []string, userID string) map[string][]storage.SearchResult {
+	out := make(map[string][]storage.SearchResult, len(items))
+	if a.VectorStore == nil {
+		return out
+	}
+	filters := map[string]any{"domain": string(weaver.DomainSummary)}
+	if strings.TrimSpace(userID) != "" {
+		filters["user_id"] = userID
+	}
+	for _, item := range items {
+		item = strings.TrimSpace(item)
+		if item == "" {
+			continue
+		}
+		results, err := a.VectorStore.SearchByText(ctx, item, a.judgeTopK(), filters)
+		if err != nil {
+			out[item] = nil
+			continue
+		}
+		out[item] = results
+	}
+	return out
+}
+
+func hasSummaryJudgeCandidates(matches map[string][]storage.SearchResult) bool {
+	for _, results := range matches {
+		for _, result := range results {
+			if result.Score >= summaryJudgeSimilarityThreshold {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func filterMatchesByThreshold(matches map[string][]storage.SearchResult, threshold float64) map[string][]storage.SearchResult {
+	out := make(map[string][]storage.SearchResult, len(matches))
+	for item, results := range matches {
+		filtered := make([]storage.SearchResult, 0, len(results))
+		for _, result := range results {
+			if result.Score >= threshold {
+				filtered = append(filtered, result)
+			}
+		}
+		out[item] = filtered
+	}
+	return out
+}
+
+func formatSummarySimilarBlock(items []string, matches map[string][]storage.SearchResult) []string {
+	if len(matches) == 0 {
+		return nil
+	}
+	lines := make([]string, 0)
+	for _, item := range items {
+		item = strings.TrimSpace(item)
+		if item == "" {
+			continue
+		}
+		results := matches[item]
+		lines = append(lines, fmt.Sprintf("For item: %q", item))
+		if len(results) == 0 {
+			lines = append(lines, "  - (no similar records above threshold)")
+			continue
+		}
+		for _, result := range results {
+			lines = append(lines, fmt.Sprintf("  - ID: %s | Score: %.2f | %q", result.ID, result.Score, result.Content))
+		}
+	}
+	return lines
 }
 
 func judgeFallback(items []string, confidence float64) weaver.JudgeResult {

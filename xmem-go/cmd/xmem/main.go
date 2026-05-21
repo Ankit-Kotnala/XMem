@@ -88,7 +88,7 @@ func main() {
 		Summarizer: agents.SummarizerAgent{Model: model},
 		Image:      agents.ImageAgent{Model: model},
 		Snippet:    agents.SnippetAgent{Model: model},
-		Judge:      agents.JudgeAgent{Model: model},
+		Judge:      agents.JudgeAgent{Model: model, VectorStore: vectorStore, TopK: 3},
 	}
 	retrieval := &pipelines.RetrievalPipeline{
 		Model:         model,
