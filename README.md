@@ -11,11 +11,11 @@
   <p><strong>The Memory Layer for AI That Never Forgets</strong></p>
   <p>Give every AI agent and LLM interface persistent, cross-platform memory out of the box.</p>
 
-  <br/>
 
 <img src="https://img.shields.io/badge/python-3.11+-blue?logo=python&logoColor=white" alt="Python 3.11+"/>
 <img src="https://img.shields.io/badge/license-BSD--3--Clause-green" alt="BSD-3 License"/>
 <img src="https://img.shields.io/badge/FastAPI-00C7B7?logo=fastapi&logoColor=white" alt="FastAPI"/>
+<br/>
 <img src="https://img.shields.io/badge/LangGraph-6C47FF?logo=langchain&logoColor=white" alt="LangGraph"/>
 <img src="https://img.shields.io/badge/Rust-Weaver-b7410e?logo=rust&logoColor=white" alt="Rust Weaver"/>
 <img src="https://img.shields.io/badge/Multi--LLM-Gemini%20%7C%20Claude%20%7C%20GPT%20%7C%20Bedrock%20%7C%20Ollama-orange" alt="Multi-LLM"/>
